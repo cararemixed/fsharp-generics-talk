@@ -1,9 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
 static char *fontfallbacks[] = {
-	"dejavu sans",
-	"roboto",
-	"ubuntu",
+	"Fira Code",
 };
 #define NUMFONTSCALES 42
 #define FONTSZ(x) ((int)(10.0 * powf(1.1288, (x)))) /* x in [0, NUMFONTSCALES-1] */
@@ -37,11 +35,7 @@ static Shortcut shortcuts[] = {
 	{ XK_space,       advance,        {.i = +1} },
 	{ XK_BackSpace,   advance,        {.i = -1} },
 	{ XK_l,           advance,        {.i = +1} },
-	{ XK_h,           advance,        {.i = -1} },
-	{ XK_j,           advance,        {.i = +1} },
-	{ XK_k,           advance,        {.i = -1} },
-	{ XK_Down,        advance,        {.i = +1} },
-	{ XK_Up,          advance,        {.i = -1} },
+	{ XK_j,           advance,        {.i = -1} },
 	{ XK_Next,        advance,        {.i = +1} },
 	{ XK_Prior,       advance,        {.i = -1} },
 	{ XK_n,           advance,        {.i = +1} },
