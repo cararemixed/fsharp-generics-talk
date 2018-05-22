@@ -1,0 +1,369 @@
+An Applied History of Generic Programming
+\
+         Talk by Brian Mitchell
+                @strmpnk
+
+I work at Wallaroo Labs
+
+@wallaroo.png
+# and I love our logo
+
+
+Original Inspiration:
+ Structured logging in F# 
+
+Original Inspiration:
+ Structured logging in F# 
+ - type safety
+ - zero invasive parameters
+ - high performance via laziness
+
+# Code sample for my tracer concept
+type private TypedTracer<'a>() =
+    static member val event = Event<'a>()
+\
+let emit<'trace> x =
+    TypedTracer<'trace>.event.Trigger(x)
+\
+let subscribe<'trace> f =
+    TypedTracer<'trace>.event.Publish |> Observable.subscribe f
+\
+type private TypedObserver<'group, 'trace>() =
+    static member val disposable : IDisposable ref = ref null
+\
+let link<'group, 'trace> f =
+    let disposable = TypedObserver<'group, 'trace>.disposable
+    lock disposable <| fun () ->
+        if !disposable <> null then (!disposable).Dispose()
+        disposable := subscribe<'trace>(f)
+\
+let unlink<'group, 'trace>() =
+    let disposable = TypedObserver<'group, 'trace>.disposable
+    lock disposable <| fun () ->
+        if !disposable <> null then (!disposable).Dispose()
+        disposable := null
+
+# Use
+type Division = Division of int * int
+\
+let some_complex_function x y =
+  try
+    emit <| Division(x, y)
+    x / y
+  with ex ->
+    emit<exn> ex
+    0
+\
+// ... elsewhere ...
+link<Logger, exn> (fun ex -> Logger.report_error exn)
+
+
+
+Polymorphism
+
+ML & CLU: Parametric polymorphism
+\
+(exact ordering here and history is contested)
+
+Polymorphism became a hot topic during the
+early OO revolution in the late 80s.
+
+
+
+
+Enter 1989, C++ Standards Committee
+# Structured programming revolution complete
+# OO movement has started gaining wider audience
+# PL research has made progress with typed representation
+
+# Original quote
+1989: The vision
+\
+Generic programming centers around the idea of abstracting from
+concrete, efficient algorithms to obtain generic algorithms that
+can be combined with different data representations to produce a
+wide variety of useful software.
+  — Musser, David R.; Stepanov, Alexander A., Generic Programming
+
+# Software -> software
+1989: Program transformation
+\
+                                       idea of abstracting     
+                    algorithms to obtain         algorithms that
+       combined with           data representations to produce  
+                       software.
+  — Musser, David R.; Stepanov, Alexander A., Generic Programming
+
+# Qualities involve
+1989: Trade-offs
+\
+Generic programming centers around the                         
+concrete, efficient            to        generic            that
+can be combined                                     to produce a
+wide variety                    
+  — Musser, David R.; Stepanov, Alexander A., Generic Programming
+
+
+
+C Macros
+
+Problematic macro code:
+\
+\#define max(a, b) (return a > b ? a : b)
+
+Detecting constant expressions (Linux Kernel):
+\
+\#define ICE_P(x) (\
+  sizeof(int) == sizeof(*(1 ? ((void*)((x) * 0l)) : (int*)1)))
+
+
+
+
+C++ Templates
+
+          Powerful Allies
+\
+Substitution and Overload Resolution
+
+template <typename T>
+inline T max(T a, T b) {
+    return a > b ? a : b;
+}
+
+Substitution Failure vs Overloading
+as a metaprogramming model
+\
+aka SFINAE
+
+max(1, 2)
+\
+max(1.0, 2.0)
+\
+max(1.0, 2)
+
+max<int>(1, 2)
+\
+max<double>(1.0, 2.0)
+\
+max<???>(1.0, 2)
+
+max<int>(1, 2)
+\
+max<double>(1.0, 2.0)
+\
+max<double>(1.0, 2)
+
+What about this one?
+\
+max(42, "answer")
+
+
+
+Problems:
+- complex error messages
+- code bloat ... one copy per unique instantiation
+- slow compile times (not just turing completeness)
+- intentions of advanced code remain unclear
+
+It's easy to hate on C++ here
+     (lol std::launder)
+
+Upsides:
+- extremely flexible (see boost)
+- better control over code generation
+  - allows zero-cost abstractions
+  - refine best features over time
+- problems are translation units not templates
+  - libraries like <algorithm> are awesome
+
+
+
+
+Fast Forward: 1998
+
+# Enter .Net and MSFTs attempt to move beyond COM
+.NET begins to emerge from a world of COM objects
+
+While COM relies on IDL to support a kind of C++ ABI
+.NET brought coherence with the IL and the BCL.
+
+IL had learned a lot form Java and Visial J++
+  - value types and semantics
+  - support for auto-boxing
+  - attempt at truly language independent core
+
+"The Histort of .NET"
+    Talk by Richard Campbell
+
+Interoperation was nice in theory but could .NET
+do better than just punting to the BCL and
+leveraging pritmitve collections and boxing?
+
+MSR, Don Syme, Project 7
+
+Haskell and .NET (also SML.Net)
+pushed the boundaries of IL
+
+
+
+
+Pushing .NET Generics
+
+Design With Efficiency In Mind
+
+Arrays of Structs
+
+What about code bloat?
+
+
+       A copy for you, 
+\
+  A copy for you, 
+\
+    A copy for everybody!
+
+
+Mature JIT technology combined with rich
+assembly metadata which directly IL supported
+
+
+
+
+# Enter Java whatever version
+
+Java (some version long ago)
+
+Very conservative bytecode and data
+model lead to different constraints
+
+Lack of user defined value types
+
+Lack of sophisticated type modeling in bytecode
+(not non-existant but very minimal in comparison)
+
+Erasure to the rescue
+  - the value of pervasive subtyping
+
+Advanced JIT technology picked up the slack
+
+Possibly an explanation of why the JVM is a
+better target for new languages: Erasure allows
+us to integrate with languages that don't express
+specific types explicitly.
+
+
+
+Example:
+\
+  JRuby vs IronRuby*
+\
+\
+* The DLR tried to fix problems with an
+  increasingly type drive dispatch model
+
+Example:
+\
+   VisualBasic.Net vs VisualBasic 6
+
+
+
+# Erasure vs Reification
+
+So which is better? ERASE or REIFY
+
+Neither. It shows that there is room to solve the problems
+at multiple levels. Reification seems to be more useful but
+sometimes mature runtimes can gain a lot from the flexibility
+of using erasure.
+
+
+
+
+# Checking the types before or after substitution
+
+Is that the whole story for Generics?
+To erase or not to erase? No.
+
+Type checking. When and where do we make guarantees.
+
+What about runtime error messages?
+
+What about better compile time feedback?
+Or dare we say compile time efficiency?
+
+There are many emerging languages taking approaches that
+are somewhere between C++, C#, and Java in style but none
+seem to be copying any of the above completely.
+
+Interesting new developments: Concepts
+\
+C++ name for this but Swift has implemented much of it
+
+Interesting new developments: Dependent Types
+\
+Plenty of advanced languages like Idris have this
+but it's also showing up in langauges like Pony
+
+
+
+
+What does this mean for F#?
+
+# Code sample for my tracer concept
+type private TypedTracer<'a>() =
+    static member val event = Event<'a>()
+\
+let emit<'trace> x =
+    TypedTracer<'trace>.event.Trigger(x)
+\
+let subscribe<'trace> f =
+    TypedTracer<'trace>.event.Publish |> Observable.subscribe f
+
+# Observer section
+type private TypedObserver<'group, 'trace>() =
+    static member val disposable : IDisposable ref = ref null
+\
+let link<'group, 'trace> f =
+    let disposable = TypedObserver<'group, 'trace>.disposable
+    lock disposable <| fun () ->
+        if !disposable <> null then (!disposable).Dispose()
+        disposable := subscribe<'trace>(f)
+\
+let unlink<'group, 'trace>() =
+    let disposable = TypedObserver<'group, 'trace>.disposable
+    lock disposable <| fun () ->
+        if !disposable <> null then (!disposable).Dispose()
+        disposable := null
+
+# Use
+type Division = Division of int * int
+\
+let some_complex_function x y =
+  try
+    emit <| Division(x, y)
+    x / y
+  with ex ->
+    emit<exn> ex
+    0
+\
+// ... elsewhere ...
+link<Logger, exn> (fun ex -> Logger.report_error exn)
+
+
+link<Logger, exn> (fun ex -> Logger.report_error exn)
+\
+// and later override (maybe accidentally?)
+\
+link<Logger, exn> (fun ex -> Logger.report_error exn)
+
+// One-stop shop for turning something off
+unlink<Logger, exn>()
+
+
+\
+\
+
+Thank you!
+\
+\@strmpnk (twitter/irc.freenode.net)
+        brian@strmpnk.co
